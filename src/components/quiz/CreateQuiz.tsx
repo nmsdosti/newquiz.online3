@@ -791,7 +791,7 @@ const CreateQuiz = () => {
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-white pt-16 pb-12">
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100 pt-16 pb-12">
         <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
           <Link to="/">
             <Logo className="h-12 w-auto ml-16" />
@@ -811,7 +811,7 @@ const CreateQuiz = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white pt-16 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100 pt-16 pb-12">
       <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
         <Link to="/">
           <Logo className="h-12 w-auto ml-16" />

@@ -133,6 +133,15 @@ const GameLobby = () => {
   };
 
   const startGame = async () => {
+    if (players.length === 0) {
+      toast({
+        title: "Cannot start game",
+        description: "At least 1 player is required to start the game",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Update the game session status to active
       const { error } = await supabase
@@ -155,7 +164,7 @@ const GameLobby = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FF6952] pt-16 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 pt-16 flex items-center justify-center">
         <div className="relative">
           <div className="h-12 w-12 rounded-full border-4 border-gray-100 border-t-navy animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -171,7 +180,7 @@ const GameLobby = () => {
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex justify-between items-center mb-16">
           <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
-            <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-16" />
+            <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
           </div>
         </div>
         <div className="flex justify-between items-center mb-6">

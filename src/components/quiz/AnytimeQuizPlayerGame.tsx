@@ -7,6 +7,7 @@ import UserMenu from "@/components/ui/user-menu";
 import { supabase } from "../../../supabase/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import Logo from "@/components/ui/logo";
+import { useRef } from "react";
 
 interface Question {
   id: string;
@@ -36,6 +37,7 @@ const AnytimeQuizPlayerGame = () => {
   const [playerData, setPlayerData] = useState<any>(null);
   const [showTransition, setShowTransition] = useState(false);
   const [transitionTimer, setTransitionTimer] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [submittedAnswers, setSubmittedAnswers] = useState<Set<number>>(
     new Set(),
   );
@@ -50,43 +52,36 @@ const AnytimeQuizPlayerGame = () => {
     if (
       questions.length > 0 &&
       currentQuestionIndex < questions.length &&
-      !showTransition
+      !showTransition &&
+      !submittedAnswers.has(currentQuestionIndex)
     ) {
       const currentQuestion = questions[currentQuestionIndex];
+
+      // Clear any old interval
+      if (timerRef.current) clearInterval(timerRef.current);
+
       setTimeLeft(currentQuestion.time_limit);
       setSelectedOption(null);
-      setAnswerSubmitted(submittedAnswers.has(currentQuestionIndex));
+      setAnswerSubmitted(false);
 
-      // Don't start timer if answer already submitted for this question
-      if (submittedAnswers.has(currentQuestionIndex)) {
-        return;
-      }
-
-      const timer = setInterval(() => {
+      timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            clearInterval(timer);
-            if (
-              !answerSubmitted &&
-              !submittedAnswers.has(currentQuestionIndex)
-            ) {
-              handleTimeUp();
-            }
+            clearInterval(timerRef.current!);
+            handleTimeUp();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
-
-      return () => clearInterval(timer);
     }
-  }, [
-    currentQuestionIndex,
-    questions,
-    answerSubmitted,
-    showTransition,
-    submittedAnswers,
-  ]);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [currentQuestionIndex, questions, showTransition]);
 
   const fetchQuizData = async () => {
     try {
@@ -165,6 +160,10 @@ const AnytimeQuizPlayerGame = () => {
   };
 
   const handleTimeUp = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     if (!answerSubmitted && !submittedAnswers.has(currentQuestionIndex)) {
       // Auto-submit with no answer (incorrect)
       setAnswerSubmitted(true);
@@ -177,7 +176,7 @@ const AnytimeQuizPlayerGame = () => {
 
   const startTransitionToNextQuestion = () => {
     setShowTransition(true);
-    setTransitionTimer(5); // 5 second timer
+    setTransitionTimer(5);
 
     const transitionInterval = setInterval(() => {
       setTransitionTimer((prev) => {
@@ -185,8 +184,12 @@ const AnytimeQuizPlayerGame = () => {
           clearInterval(transitionInterval);
           setShowTransition(false);
 
+          // Reset local state before next question
+          setAnswerSubmitted(false);
+          setSelectedOption(null);
+
           if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1);
+            setCurrentQuestionIndex((prev) => prev + 1);
           } else {
             completeQuiz();
           }

@@ -154,9 +154,9 @@ const JoinGame = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FF6952] to-[#FF6952] text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 text-white flex items-center justify-center p-4">
       <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
-        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-16" />
+        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
         <UserMenu />
       </div>
       <Card className="max-w-md w-full bg-white/10 backdrop-blur-md border-white/20 shadow-xl">

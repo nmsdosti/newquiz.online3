@@ -234,33 +234,38 @@ const HostQuiz = () => {
 
   return (
     <div className="min-h-screen bg-[#FF6952] pt-16 pb-12">
-      <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
+      <div className="w-full bg-white flex justify-between items-center px-4 sm:px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
         <Link to="/">
-          <Logo className="h-12 w-auto ml-16" />
+          <Logo className="h-8 sm:h-12 w-auto ml-0 sm:ml-16" />
         </Link>
         <UserMenu />
       </div>
       <div className="max-w-4xl mx-auto px-4 mt-16">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-white">Host a Quiz</h1>
-          <div className="flex gap-2 text-white">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">
+            Host a Quiz
+          </h1>
+          <div className="flex flex-col sm:flex-row gap-2 text-white w-full sm:w-auto">
             <Button
               onClick={() => navigate("/")}
               variant="outline"
-              className="gap-2"
+              className="gap-2 text-xs sm:text-sm"
+              size="sm"
             >
               Home
             </Button>
             <Button
               onClick={() => navigate("/results")}
               variant="outline"
-              className="gap-2"
+              className="gap-2 text-xs sm:text-sm"
+              size="sm"
             >
               View All Results
             </Button>
             <Button
               onClick={() => navigate("/create")}
-              className="bg-navy hover:bg-navy/90 gap-2"
+              className="bg-navy hover:bg-navy/90 gap-2 text-xs sm:text-sm"
+              size="sm"
             >
               Create New Quiz
             </Button>
@@ -277,30 +282,31 @@ const HostQuiz = () => {
             </div>
           </div>
         ) : gamePin ? (
-          <Card className="bg-white shadow-sm border-gray-100 text-center p-8">
+          <Card className="bg-white shadow-sm border-gray-100 text-center p-4 sm:p-8">
             <div className="max-w-md mx-auto">
-              <div className="mb-6 bg-navy text-white p-6 rounded-xl">
-                <h2 className="text-2xl font-bold mb-2">Game PIN</h2>
-                <div className="text-5xl font-bold tracking-wider mb-4">
+              <div className="mb-6 bg-navy text-white p-4 sm:p-6 rounded-xl">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">Game PIN</h2>
+                <div className="text-3xl sm:text-5xl font-bold tracking-wider mb-4">
                   {gamePin}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                <div className="flex flex-col gap-3 justify-center items-center">
                   <Button
                     onClick={copyGamePin}
                     variant="outline"
-                    className="bg-white/20 border-white text-white hover:bg-white/30 gap-2"
+                    className="bg-white/20 border-white text-white hover:bg-white/30 gap-2 text-sm"
+                    size="sm"
                   >
                     <Copy className="h-4 w-4" />
                     Copy PIN
                   </Button>
 
-                  <div className="flex flex-col items-center bg-white p-3 rounded-lg">
+                  <div className="flex flex-col items-center bg-white p-2 sm:p-3 rounded-lg">
                     <div className="bg-white p-1 rounded-md mb-2">
                       {gamePin && (
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}/join?pin=${gamePin}`)}`}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${window.location.origin}/join?pin=${gamePin}`)}`}
                           alt="QR Code"
-                          className="w-24 h-24"
+                          className="w-16 h-16 sm:w-24 sm:h-24"
                         />
                       )}
                     </div>
@@ -310,12 +316,12 @@ const HostQuiz = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-lg mb-6">
+              <p className="text-sm sm:text-lg mb-6">
                 Share this PIN with participants. They can join at{" "}
                 <span className="font-bold">quizmaster.com</span> or through the
                 app.
               </p>
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                 {gameMode === "poll" && (
                   <Button
                     onClick={() => {
@@ -337,10 +343,10 @@ const HostQuiz = () => {
                           }
                         });
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 gap-2 text-lg px-8 py-6 h-auto"
+                    className="bg-blue-600 hover:bg-blue-700 gap-2 text-sm sm:text-lg px-4 sm:px-8 py-4 sm:py-6 h-auto"
                   >
                     Start Poll
-                    <ArrowRight className="h-5 w-5" />
+                    <ArrowRight className="h-4 sm:h-5 w-4 sm:w-5" />
                   </Button>
                 )}
                 <Button
@@ -403,62 +409,66 @@ const HostQuiz = () => {
                         });
                     }
                   }}
-                  className="bg-navy hover:bg-navy/90 gap-2 text-lg px-8 py-6 h-auto"
+                  className="bg-navy hover:bg-navy/90 gap-2 text-sm sm:text-lg px-4 sm:px-8 py-4 sm:py-6 h-auto"
                 >
                   {gameMode === "poll"
                     ? "Go to Poll Lobby"
                     : "Continue to Lobby"}
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-4 sm:h-5 w-4 sm:w-5" />
                 </Button>
               </div>
             </div>
           </Card>
         ) : quizzes.length === 0 ? (
-          <Card className="bg-white shadow-sm border-gray-100 p-8 text-center">
+          <Card className="bg-white shadow-sm border-gray-100 p-4 sm:p-8 text-center">
             <div className="max-w-md mx-auto">
-              <h2 className="text-2xl font-bold mb-4">No Quizzes Found</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4">
+                No Quizzes Found
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 mb-6">
                 You haven't created any quizzes yet. Create your first quiz to
                 get started!
               </p>
               <Button
                 onClick={() => navigate("/create")}
-                className="bg-[#46178F] hover:bg-[#3b1277] gap-2 text-lg px-8 py-6 h-auto"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 gap-2 text-sm sm:text-lg px-4 sm:px-8 py-4 sm:py-6 h-auto w-full sm:w-auto"
               >
                 Create Your First Quiz
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-4 sm:h-5 w-4 sm:w-5" />
               </Button>
             </div>
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
               {quizzes.map((quiz) => (
                 <Card
                   key={quiz.id}
                   className={`bg-white shadow-sm border-2 cursor-pointer transition-all ${selectedQuiz === quiz.id ? "border-[#46178F]" : "border-gray-100 hover:border-gray-300"}`}
                   onClick={() => setSelectedQuiz(quiz.id)}
                 >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{quiz.title}</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base sm:text-lg">
+                      {quiz.title}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-sm text-gray-500 mb-4 line-clamp-2">
+                    <div className="text-xs sm:text-sm text-gray-500 mb-4 line-clamp-2">
                       {quiz.description || "No description"}
                     </div>
-                    <div className="flex justify-between text-sm text-gray-600">
+                    <div className="flex flex-col sm:flex-row justify-between text-xs sm:text-sm text-gray-600 gap-2 sm:gap-0">
                       <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span>
                           {new Date(quiz.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
+                        <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span>{quiz.question_count} questions</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2 mt-2">
+                    <div className="flex flex-col gap-2 mt-3">
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -466,7 +476,7 @@ const HostQuiz = () => {
                         }}
                         variant="outline"
                         size="sm"
-                        className="w-full"
+                        className="w-full text-xs sm:text-sm"
                       >
                         Edit Quiz
                       </Button>
@@ -477,7 +487,7 @@ const HostQuiz = () => {
                         }}
                         variant="destructive"
                         size="sm"
-                        className="w-full"
+                        className="w-full text-xs sm:text-sm"
                       >
                         Delete Quiz
                       </Button>
@@ -491,52 +501,56 @@ const HostQuiz = () => {
               <Button
                 onClick={startGame}
                 disabled={!selectedQuiz}
-                className="bg-navy hover:bg-navy/90 gap-2 text-lg px-8 py-6 h-auto disabled:opacity-50"
+                className="bg-navy hover:bg-navy/90 gap-2 text-sm sm:text-lg px-6 sm:px-8 py-4 sm:py-6 h-auto disabled:opacity-50 w-full sm:w-auto"
               >
-                <Play className="h-5 w-5" />
+                <Play className="h-4 sm:h-5 w-4 sm:w-5" />
                 Start Game
               </Button>
             </div>
 
             {/* Game Mode Selection Modal */}
             {showGameModeSelection && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <Card className="bg-white shadow-xl border-gray-100 p-8 max-w-md w-full mx-4">
-                  <h2 className="text-2xl font-bold mb-6 text-center">
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <Card className="bg-white shadow-xl border-gray-100 p-4 sm:p-8 max-w-md w-full">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">
                     Select Game Mode
                   </h2>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <Button
                       onClick={() => startGameWithMode("live")}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white p-6 h-auto text-left"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white p-4 sm:p-6 h-auto text-left"
                     >
                       <div>
-                        <div className="font-bold text-lg mb-1">Live Quiz</div>
-                        <div className="text-sm opacity-90">
+                        <div className="font-bold text-base sm:text-lg mb-1">
+                          Live Quiz
+                        </div>
+                        <div className="text-xs sm:text-sm opacity-90">
                           Real-time quiz with timer and instant results
                         </div>
                       </div>
                     </Button>
                     <Button
                       onClick={() => startGameWithMode("poll")}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white p-6 h-auto text-left"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 sm:p-6 h-auto text-left"
                     >
                       <div>
-                        <div className="font-bold text-lg mb-1">Poll Mode</div>
-                        <div className="text-sm opacity-90">
+                        <div className="font-bold text-base sm:text-lg mb-1">
+                          Poll Mode
+                        </div>
+                        <div className="text-xs sm:text-sm opacity-90">
                           Collect feedback with live results, no time limit
                         </div>
                       </div>
                     </Button>
                     <Button
                       onClick={() => startGameWithMode("anytime")}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white p-6 h-auto text-left"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white p-4 sm:p-6 h-auto text-left"
                     >
                       <div>
-                        <div className="font-bold text-lg mb-1">
+                        <div className="font-bold text-base sm:text-lg mb-1">
                           Self-Paced Quiz
                         </div>
-                        <div className="text-sm opacity-90">
+                        <div className="text-xs sm:text-sm opacity-90">
                           Players can join anytime and complete at their own
                           pace
                         </div>
@@ -546,7 +560,7 @@ const HostQuiz = () => {
                   <Button
                     onClick={() => setShowGameModeSelection(false)}
                     variant="outline"
-                    className="w-full mt-4"
+                    className="w-full mt-4 text-sm"
                   >
                     Cancel
                   </Button>

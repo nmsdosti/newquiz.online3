@@ -202,6 +202,15 @@ const PollGamePlay = () => {
       return;
     }
 
+    if (players.length === 0) {
+      toast({
+        title: "Cannot start poll",
+        description: "At least 1 player is required to start the poll",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("poll_sessions")
@@ -328,7 +337,7 @@ const PollGamePlay = () => {
       <div className="min-h-screen bg-[#f5f5f7] pt-16 pb-12">
         <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
           <Link to="/">
-            <Logo className="h-12 w-auto ml-16" />
+            <Logo className="h-12 w-auto ml-0 sm:ml-16" />
           </Link>
           <UserMenu />
         </div>
@@ -366,9 +375,9 @@ const PollGamePlay = () => {
   const totalQuestions = questions.length;
 
   return (
-    <div className="min-h-screen bg-[#4F46E5] pt-16 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 pt-16 pb-12">
       <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
-        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-16" />
+        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
         <UserMenu />
       </div>
       <div className="max-w-4xl mx-auto px-4 mt-16">

@@ -98,7 +98,7 @@ export default function AdminApproval() {
   return (
     <div className="min-h-screen bg-[#FF6952] to-teal-500 p-4">
       <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
-        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-16" />
+        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
         <UserMenu />
       </div>
       <div className="max-w-6xl mt-24 mx-auto">

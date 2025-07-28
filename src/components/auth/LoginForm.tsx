@@ -47,8 +47,8 @@ export default function LoginForm() {
 
   return (
     <AuthLayout>
-      <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 w-full max-w-md mx-auto border border-skyblue/30">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-4 sm:p-8 w-full max-w-md mx-auto border border-skyblue/30">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium text-navy">
               Email Address
@@ -60,7 +60,7 @@ export default function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black"
+              className="h-10 sm:h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black text-sm sm:text-base"
             />
           </div>
           <div className="space-y-2">
@@ -85,22 +85,22 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black"
+              className="h-10 sm:h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black text-sm sm:text-base"
             />
           </div>
           {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
           <Button
             type="submit"
-            className="w-full h-12 rounded-full bg-coral text-white hover:bg-coral/90 text-sm font-medium transition-colors"
+            className="w-full h-10 sm:h-12 rounded-full bg-coral text-white hover:bg-coral/90 text-sm sm:text-base font-medium transition-colors"
           >
-            Sign in to Acoem Engage
+            Sign in to Newquiz.online
           </Button>
 
           <div className="text-sm text-center text-navy mt-6">
             Don't have an account?{" "}
             <Link
               to="/signup"
-              className="text-coral hover:text-coral/80 font-medium transition-colors"
+              className="text-purple-600 hover:text-purple-700 font-medium transition-colors"
             >
               Create account
             </Link>

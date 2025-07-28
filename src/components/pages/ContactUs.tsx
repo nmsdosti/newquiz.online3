@@ -102,7 +102,7 @@ export default function ContactUs() {
             <img
               src="https://i.postimg.cc/pXxdtDJz/quiz-online-logo.png"
               alt="Newquiz.online Logo"
-              className="h-12 w-auto ml-16"
+              className="h-12 w-auto ml-0 sm:ml-16"
             />
           </Link>
           <UserMenu />

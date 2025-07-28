@@ -464,7 +464,7 @@ const PlayerGame = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-navy to-skyblue text-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 text-white flex flex-col">
       <div className="p-4 flex justify-between items-center">
         <div className="text-2xl font-bold">{timeLeft}s</div>
         <div className="flex items-center gap-2">

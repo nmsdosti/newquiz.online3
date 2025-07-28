@@ -11,6 +11,7 @@ import Dashboard from "./components/pages/dashboard";
 import Profile from "./components/pages/profile";
 import Settings from "./components/pages/settings";
 import ContactUs from "./components/pages/ContactUs";
+import Pricing from "./components/pages/pricing";
 import CreateQuiz from "./components/quiz/CreateQuiz";
 import HostQuiz from "./components/quiz/HostQuiz";
 import GameLobby from "./components/quiz/GameLobby";
@@ -43,18 +44,18 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (!isApproved) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center p-4">
-        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 max-w-md mx-auto text-center border border-skyblue/30">
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 max-w-md mx-auto text-center border border-white/30">
           <div className="text-6xl mb-4">⏳</div>
-          <h2 className="text-2xl font-bold text-navy mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
             Account Pending Approval
           </h2>
-          <p className="text-navy/70 mb-6">
+          <p className="text-gray-600 mb-6">
             Your account is currently under review. You will receive access once
             approved by an administrator.
           </p>
           <button
             onClick={() => (window.location.href = "/login")}
-            className="bg-coral text-white px-6 py-2 rounded-full hover:bg-coral/90 transition-colors"
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-full hover:from-purple-700 hover:to-pink-700 transition-colors"
           >
             Back to Login
           </button>
@@ -91,6 +92,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<ContactUs />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/signup" element={<SignUpForm />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

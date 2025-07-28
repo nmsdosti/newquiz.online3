@@ -51,8 +51,8 @@ export default function SignUpForm() {
 
   return (
     <AuthLayout>
-      <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 w-full max-w-md mx-auto border border-skyblue/30">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-4 sm:p-8 w-full max-w-md mx-auto border border-skyblue/30">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="space-y-2">
             <Label htmlFor="fullName" className="text-sm font-medium text-navy">
               Full Name
@@ -63,7 +63,7 @@ export default function SignUpForm() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              className="h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black"
+              className="h-10 sm:h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black text-sm sm:text-base"
             />
           </div>
           <div className="space-y-2">
@@ -77,7 +77,7 @@ export default function SignUpForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black"
+              className="h-10 sm:h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black text-sm sm:text-base"
             />
           </div>
           <div className="space-y-2">
@@ -91,7 +91,7 @@ export default function SignUpForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black"
+              className="h-10 sm:h-12 rounded-lg border-skyblue focus:ring-coral focus:border-coral bg-white/80 text-black text-sm sm:text-base"
             />
             <p className="text-xs text-navy/70 mt-1">
               Password must be at least 6 characters
@@ -101,9 +101,9 @@ export default function SignUpForm() {
 
           <Button
             type="submit"
-            className="w-full h-12 rounded-full bg-coral text-white hover:bg-coral/90 text-sm font-medium transition-colors"
+            className="w-full h-10 sm:h-12 rounded-full bg-coral text-white hover:bg-coral/90 text-sm sm:text-base font-medium transition-colors"
           >
-            Join Acoem Engage
+            Join Newquiz.online
           </Button>
 
           <div className="text-xs text-center text-navy/70 mt-6">
@@ -121,7 +121,7 @@ export default function SignUpForm() {
             Already have an account?{" "}
             <Link
               to="/login"
-              className="text-coral hover:text-coral/80 font-medium transition-colors"
+              className="text-purple-600 hover:text-purple-700 font-medium transition-colors"
             >
               Sign in
             </Link>

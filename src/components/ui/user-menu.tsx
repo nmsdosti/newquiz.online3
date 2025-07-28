@@ -33,7 +33,7 @@ export default function UserMenu() {
       <Link to="/login">
         <Button
           variant="outline"
-          className="bg-[#2C5078]/90 border-white/20 text-white hover:bg-[#2C5078]/100 hover:text-white"
+          className="bg-gradient-to-r from-purple-600 to-pink-600 border-white/20 text-white hover:from-purple-700 hover:to-pink-700 hover:text-white"
         >
           SIGN IN
         </Button>
@@ -79,6 +79,15 @@ export default function UserMenu() {
           <Link to="/host" className="cursor-pointer flex w-full items-center">
             <Play className="mr-2 h-4 w-4" />
             My Quizzes
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
+            to="/pricing"
+            className="cursor-pointer flex w-full items-center"
+          >
+            <span className="mr-2 h-4 w-4">💰</span>
+            Pricing
           </Link>
         </DropdownMenuItem>
         {isAdmin && (

@@ -57,7 +57,7 @@ const Profile = () => {
     <div className="min-h-screen bg-[#f5f5f7] pt-20 pb-12">
       {/* Header */}
       <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
-        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-16" />
+        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
         <UserMenu />
       </div>
 
@@ -117,7 +117,7 @@ const Profile = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-[#46178F] hover:bg-[#3b1277] gap-2"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 gap-2"
                   disabled={loading}
                 >
                   <Save className="h-4 w-4" />

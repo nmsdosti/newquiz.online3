@@ -30,7 +30,7 @@ const Settings = () => {
     <div className="min-h-screen bg-[#f5f5f7] pt-20 pb-12">
       {/* Header */}
       <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
-        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-16" />
+        <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
         <UserMenu />
       </div>
 
