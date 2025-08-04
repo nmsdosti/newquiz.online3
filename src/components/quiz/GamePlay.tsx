@@ -192,7 +192,8 @@ const GamePlay = () => {
         ) {
           const question =
             questionsWithOptions[sessionData.current_question_index];
-          startTimer(question.time_limit);
+          // Use the new timer method with proper question index
+          startTimer(sessionData.current_question_index, question.time_limit);
           // Fetch current answer stats for this question
           setTimeout(() => {
             console.log("[INIT] Fetching stats for resumed question");
@@ -313,7 +314,7 @@ const GamePlay = () => {
       `[TIMER] Starting timer with ${seconds} seconds for question ${questionIndex + 1}`,
     );
 
-    // Clear any existing timer
+    // Clear any existing timer immediately
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -331,15 +332,9 @@ const GamePlay = () => {
     currentQ.options.forEach((option) => {
       const uniqueKey = `q${questionIndex}_${option.id}`;
       freshStats[uniqueKey] = 0;
-      console.log(
-        `[TIMER] Initialized fresh stat for Q${questionIndex + 1}: ${uniqueKey}`,
-      );
     });
 
-    console.log(`[TIMER] Fresh stats for Q${questionIndex + 1}:`, freshStats);
-
-    // Set initial state - IMPORTANT: Set timeLeft to the full seconds value first
-    setTimeLeft(seconds);
+    // Set initial state
     setShowResults(false);
     setIsCalculatingResults(false);
     setAnswerStats(freshStats);
@@ -361,48 +356,55 @@ const GamePlay = () => {
       },
     });
 
-    // Start the countdown timer - use a ref to track current time
-    let currentTime = seconds;
+    // Set initial time immediately
+    const safeTime = Math.max(seconds, 1);
+    setTimeLeft(safeTime);
 
-    timerRef.current = setInterval(() => {
-      currentTime -= 1;
-      console.log(
-        `[TIMER] Countdown: ${currentTime}s remaining for Q${questionIndex + 1}`,
-      );
+    console.log(`[TIMER] Initial time set to: ${seconds}`);
 
-      // Update the state with the new time
-      setTimeLeft(currentTime);
+    // Start countdown after a small delay to ensure state is set
+    setTimeout(() => {
+      let remainingTime = safeTime; // instead of "seconds"
 
-      // Check if time is up
-      if (currentTime <= 0) {
-        console.log(`[TIMER] Time up for Q${questionIndex + 1}`);
+      const countdown = () => {
+        remainingTime--;
+        console.log(`[TIMER] Countdown: ${remainingTime}`);
 
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        stopStatsPolling();
+        setTimeLeft(remainingTime);
 
-        // Broadcast time up event
-        supabase.channel(`game_${sessionId}_sync`).send({
-          type: "broadcast",
-          event: "time_up",
-          payload: { question_index: questionIndex, timestamp: Date.now() },
-        });
+        if (remainingTime <= 0) {
+          console.log(`[TIMER] Time up for Q${questionIndex + 1}`);
 
-        // Show results after a brief delay
-        setIsCalculatingResults(true);
-        setTimeout(() => {
-          refreshAnswerStats(questionIndex).then(() => {
-            console.log(
-              `[TIMER] Setting showResults to true for Q${questionIndex + 1}`,
-            );
-            setShowResults(true);
-            setIsCalculatingResults(false);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          stopStatsPolling();
+
+          // Broadcast time up event
+          supabase.channel(`game_${sessionId}_sync`).send({
+            type: "broadcast",
+            event: "time_up",
+            payload: { question_index: questionIndex, timestamp: Date.now() },
           });
-        }, 500);
-      }
-    }, 1000);
+
+          // Show results after a brief delay
+          setIsCalculatingResults(true);
+          setTimeout(() => {
+            refreshAnswerStats(questionIndex).then(() => {
+              console.log(
+                `[TIMER] Setting showResults to true for Q${questionIndex + 1}`,
+              );
+              setShowResults(true);
+              setIsCalculatingResults(false);
+            });
+          }, 500);
+        }
+      };
+
+      // Start the countdown timer
+      timerRef.current = setInterval(countdown, 1000);
+    }, 100);
 
     // Initial stats refresh
     setTimeout(() => {
@@ -435,55 +437,88 @@ const GamePlay = () => {
       }
       stopStatsPolling();
 
-      // Update the game session status and current question index
-      const { error } = await supabase
+      // IMMEDIATELY show "Get Ready!" screen - this is the critical fix
+      setCurrentQuestionIndex(-2);
+      setShowResults(false);
+      setIsCalculatingResults(false);
+      setTimeLeft(0);
+
+      // Update game session state immediately
+      const updatedSession = {
+        ...gameSession,
+        status: "active",
+        current_question_index: -2,
+        updated_at: new Date().toISOString(),
+      };
+      setGameSession(updatedSession);
+
+      console.log("[START_GAME] Set state to show Get Ready screen");
+
+      // Update database
+      const { error: statusError } = await supabase
         .from("game_sessions")
         .update({
           status: "active",
-          current_question_index: 0,
+          current_question_index: -2,
           updated_at: new Date().toISOString(),
         })
         .eq("id", sessionId);
 
-      if (error) throw error;
+      if (statusError) throw statusError;
 
-      // Set the current question index first
-      setCurrentQuestionIndex(0);
-      setShowResults(false);
-      setIsCalculatingResults(false);
-
-      // Initialize answer stats for the first question
-      const initialStats: { [key: string]: number } = {};
-      questions[0].options.forEach((option) => {
-        initialStats[option.id] = 0;
-      });
-
-      setAnswerStats(initialStats);
-      setTotalAnswers(0);
-      setLastUpdateTime(Date.now());
-
-      // Broadcast game start to all participants
+      // Broadcast game start
       await supabase.channel(`game_${sessionId}_sync`).send({
         type: "broadcast",
         event: "game_started",
         payload: {
           quiz_id: quiz.id,
           total_questions: questions.length,
-          first_question: questions[0],
           timestamp: Date.now(),
         },
       });
 
       console.log(
-        "[START_GAME] Starting timer for first question with",
-        questions[0].time_limit,
-        "seconds",
+        "[START_GAME] Database updated, showing Get Ready for 3 seconds",
       );
 
-      // Start the timer for the first question (index 0) immediately
-      startTimer(0, questions[0].time_limit);
+      // Wait 3 seconds, then start first question
+      setTimeout(async () => {
+        try {
+          console.log("[START_GAME] Moving to first question");
+
+          const { error } = await supabase
+            .from("game_sessions")
+            .update({
+              current_question_index: 0,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", sessionId);
+
+          if (error) throw error;
+
+          // Set the question index to 0 and start the timer
+          console.log("Questions loaded:", questions);
+          if (questions.length && questions[0]?.time_limit) {
+            const timeLimit = Math.max(questions[0].time_limit, 1); // Ensure at least 1 second
+            console.log("Starting first question with time limit:", timeLimit);
+
+            setCurrentQuestionIndex(0);
+            startTimer(0, timeLimit);
+          } else {
+            console.error(
+              "First question is missing or has no valid time_limit",
+            );
+          }
+        } catch (error: any) {
+          console.error("[START_GAME] Error:", error);
+          toast({
+            title: "Error starting game",
+            description: error.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+      }, 3000);
     } catch (error: any) {
-      console.error("[START_GAME] Error:", error);
       toast({
         title: "Error starting game",
         description: error.message || "Something went wrong",
@@ -1079,22 +1114,27 @@ const GamePlay = () => {
 
           <div className="flex justify-center gap-4">
             <Button
-              onClick={() => setShowSummary(true)}
-              className="bg-coral hover:bg-coral/90 gap-2 text-lg px-8 py-6 h-auto"
+              onClick={() => {
+                // End the quiz immediately and show final results
+                setGameEnded(true);
+              }}
+              variant="outline"
+              className="bg-red-500 hover:bg-red-600 text-white border-red-500 gap-2 text-lg px-8 py-6 h-auto"
             >
-              View Summary
+              End Quiz
             </Button>
             <Button
-              onClick={exportToCSV}
-              className="bg-skyblue hover:bg-skyblue/90 gap-2 text-lg px-8 py-6 h-auto"
-            >
-              Export Results
-            </Button>
-            <Button
-              onClick={goToHostDashboard}
+              onClick={nextQuestion}
               className="bg-navy hover:bg-navy/90 gap-2 text-lg px-8 py-6 h-auto"
             >
-              Back to Host Dashboard
+              {currentQuestionIndex < questions.length - 1 ? (
+                <>
+                  Next Question
+                  <ChevronRight className="h-5 w-5" />
+                </>
+              ) : (
+                "See Final Results"
+              )}
             </Button>
           </div>
         </div>
@@ -1102,10 +1142,61 @@ const GamePlay = () => {
     );
   }
 
-  if (currentQuestionIndex === -1) {
+  // Show "Get Ready!" screen when currentQuestionIndex is -2
+  if (currentQuestionIndex === -2) {
+    console.log(
+      "[RENDER] Showing Get Ready screen - questionIndex:",
+      currentQuestionIndex,
+    );
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 pt-16 pb-12">
+        <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
+          <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
+          <UserMenu />
+        </div>
+        <div className="max-w-4xl mx-auto px-4 text-center mt-16">
+          <Card className="bg-white shadow-sm border-gray-100 p-8 mb-8">
+            <div className="max-w-md mx-auto">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                🚀 Get Ready!
+              </h1>
+              <p className="text-xl text-gray-600 mb-4">
+                The first question is coming up...
+              </p>
+              <p className="text-sm text-gray-500 mb-8">
+                {players.length} players are ready to play!
+              </p>
+              <div className="relative">
+                <div className="h-16 w-16 rounded-full border-4 border-gray-200 border-t-navy animate-spin mx-auto" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-6 w-6 rounded-full bg-navy/20 animate-pulse" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-4">
+                Starting in a few seconds...
+              </p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentQuestionIndex === -1 && gameSession?.status !== "active") {
+    // Game hasn't started yet - show start button
+    console.log(
+      "[RENDER] Showing start game screen - status:",
+      gameSession?.status,
+      "questionIndex:",
+      currentQuestionIndex,
+    );
     return (
       <div className="min-h-screen bg-[#f5f5f7] pt-16 pb-12">
-        <div className="max-w-4xl mx-auto px-4 text-center">
+        <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
+          <Logo className="bg-white/20 backdrop-blur-md p-1 rounded ml-0 sm:ml-16" />
+          <UserMenu />
+        </div>
+        <div className="max-w-4xl mx-auto px-4 text-center mt-16">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             {quiz?.title}
           </h1>

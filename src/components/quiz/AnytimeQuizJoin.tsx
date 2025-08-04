@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Shield, AlertTriangle } from "lucide-react";
 import { supabase } from "../../../supabase/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import UserMenu from "@/components/ui/user-menu";
@@ -21,12 +21,51 @@ const AnytimeQuizJoin = () => {
   const [loading, setLoading] = useState(false);
   const [quizSession, setQuizSession] = useState<any>(null);
   const [quiz, setQuiz] = useState<any>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
+  const [securityChecks, setSecurityChecks] = useState({
+    ipCheck: false,
+    deviceCheck: false,
+    emailCheck: false,
+    timeCheck: false,
+  });
 
   useEffect(() => {
     if (sessionId) {
       fetchQuizSession();
+      generateDeviceFingerprint();
     }
   }, [sessionId]);
+
+  const generateDeviceFingerprint = () => {
+    // Create a unique device fingerprint based on browser characteristics
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillText("Device fingerprint", 2, 2);
+    }
+
+    const fingerprint = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + "x" + screen.height,
+      new Date().getTimezoneOffset(),
+      canvas.toDataURL(),
+      navigator.hardwareConcurrency || 0,
+      navigator.deviceMemory || 0,
+    ].join("|");
+
+    // Create a simple hash
+    let hash = 0;
+    for (let i = 0; i < fingerprint.length; i++) {
+      const char = fingerprint.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    setDeviceFingerprint(Math.abs(hash).toString(36));
+  };
 
   const fetchQuizSession = async () => {
     try {
@@ -72,6 +111,74 @@ const AnytimeQuizJoin = () => {
     }
   };
 
+  const performSecurityChecks = async (ipAddress: string) => {
+    const checks = {
+      ipCheck: false,
+      deviceCheck: false,
+      emailCheck: false,
+      timeCheck: false,
+    };
+
+    try {
+      // 1. Check if IP has already participated
+      const { data: ipPlayers } = await supabase
+        .from("anytime_quiz_players")
+        .select("*")
+        .eq("session_id", sessionId)
+        .eq("ip_address", ipAddress);
+
+      if (ipPlayers && ipPlayers.length > 0) {
+        checks.ipCheck = true;
+      }
+
+      // 2. Check if device fingerprint has been used
+      const { data: devicePlayers } = await supabase
+        .from("anytime_quiz_players")
+        .select("*")
+        .eq("session_id", sessionId)
+        .like("player_name", `%${deviceFingerprint}%`);
+
+      if (devicePlayers && devicePlayers.length > 0) {
+        checks.deviceCheck = true;
+      }
+
+      // 3. Check if email domain is suspicious (common temp email domains)
+      const suspiciousDomains = [
+        "10minutemail.com",
+        "tempmail.org",
+        "guerrillamail.com",
+        "mailinator.com",
+        "yopmail.com",
+        "temp-mail.org",
+        "throwaway.email",
+        "getnada.com",
+        "maildrop.cc",
+      ];
+      const emailDomain = email.split("@")[1]?.toLowerCase();
+      if (suspiciousDomains.includes(emailDomain)) {
+        checks.emailCheck = true;
+      }
+
+      // 4. Check if multiple attempts from same IP in short time
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data: recentAttempts } = await supabase
+        .from("anytime_quiz_players")
+        .select("*")
+        .eq("session_id", sessionId)
+        .eq("ip_address", ipAddress)
+        .gte("created_at", oneHourAgo);
+
+      if (recentAttempts && recentAttempts.length > 0) {
+        checks.timeCheck = true;
+      }
+    } catch (error) {
+      console.error("Security check error:", error);
+    }
+
+    setSecurityChecks(checks);
+    return checks;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -84,12 +191,33 @@ const AnytimeQuizJoin = () => {
       return;
     }
 
-    // Basic email validation
+    // Enhanced email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast({
         title: "Invalid email",
         description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for obviously fake names
+    const suspiciousNames = [
+      "test",
+      "fake",
+      "dummy",
+      "temp",
+      "anonymous",
+      "user",
+      "player",
+    ];
+    if (
+      suspiciousNames.some((name) => playerName.toLowerCase().includes(name))
+    ) {
+      toast({
+        title: "Invalid name",
+        description: "Please enter your real full name",
         variant: "destructive",
       });
       return;
@@ -101,29 +229,55 @@ const AnytimeQuizJoin = () => {
       // Get client IP address
       const ipAddress = await getClientIP();
 
-      // Check if this IP has already participated
-      const { data: existingPlayer, error: checkError } = await supabase
-        .from("anytime_quiz_players")
-        .select("*")
-        .eq("session_id", sessionId)
-        .eq("ip_address", ipAddress)
-        .single();
+      // Perform comprehensive security checks
+      const securityResults = await performSecurityChecks(ipAddress);
 
-      if (!checkError && existingPlayer) {
+      // Block if any security check fails
+      if (securityResults.ipCheck) {
         toast({
-          title: "Already participated",
-          description: "You have already taken this quiz from this network",
+          title: "Access Denied",
+          description:
+            "This network has already been used to take this quiz. Each quiz can only be taken once per network to ensure fairness.",
           variant: "destructive",
         });
         return;
       }
 
-      // Add the player to the anytime quiz
+      if (securityResults.deviceCheck) {
+        toast({
+          title: "Access Denied",
+          description: "This device has already been used for this quiz.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (securityResults.emailCheck) {
+        toast({
+          title: "Invalid Email",
+          description:
+            "Please use a valid, permanent email address. Temporary email services are not allowed.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (securityResults.timeCheck) {
+        toast({
+          title: "Too Many Attempts",
+          description:
+            "Multiple attempts detected from this network. Please wait before trying again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Add the player to the anytime quiz with enhanced tracking
       const { data, error } = await supabase
         .from("anytime_quiz_players")
         .insert({
           session_id: sessionId,
-          player_name: playerName,
+          player_name: `${playerName}_${deviceFingerprint}`, // Include device fingerprint
           email: email,
           phone: phone || null,
           ip_address: ipAddress,
@@ -131,6 +285,15 @@ const AnytimeQuizJoin = () => {
         .select();
 
       if (error) throw error;
+
+      // Log the attempt for security monitoring
+      await supabase.from("anytime_participants").insert({
+        session_id: sessionId,
+        player_name: playerName,
+        email: email,
+        phone: phone || null,
+        ip_address: ipAddress,
+      });
 
       // Navigate to the anytime quiz player screen
       navigate(`/anytime-quiz-play/${sessionId}/${data[0].id}`);
@@ -217,12 +380,31 @@ const AnytimeQuizJoin = () => {
               />
             </div>
 
+            {/* Security Notice */}
+            <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-red-300 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-red-100">
+                  <div className="font-semibold mb-2">
+                    Anti-Cheating Measures Active
+                  </div>
+                  <ul className="space-y-1 text-xs">
+                    <li>• IP address and device fingerprinting enabled</li>
+                    <li>• Only one attempt per network/device allowed</li>
+                    <li>• Temporary email addresses are blocked</li>
+                    <li>• Real names required - fake names will be rejected</li>
+                    <li>• All attempts are logged and monitored</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <div className="text-xs text-white/70 bg-white/10 p-3 rounded-lg">
               <p className="mb-1">
-                • This quiz can only be taken once per network
+                • This quiz can only be taken once per network/device
               </p>
               <p className="mb-1">
-                • Your IP address will be recorded to prevent multiple attempts
+                • Your information will be verified for authenticity
               </p>
               <p>• All fields marked with * are required</p>
             </div>

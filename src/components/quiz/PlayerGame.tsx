@@ -36,6 +36,7 @@ const PlayerGame = () => {
   const [playerRank, setPlayerRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [waitingForNextQuestion, setWaitingForNextQuestion] = useState(false);
+  const [showGetReady, setShowGetReady] = useState(false);
 
   useEffect(() => {
     if (sessionId && playerId) {
@@ -47,19 +48,16 @@ const PlayerGame = () => {
   const fetchGameSession = async () => {
     try {
       setLoading(true);
-
       // Get the game session
       const { data: sessionData, error: sessionError } = await supabase
         .from("game_sessions")
         .select("*")
         .eq("id", sessionId)
         .single();
-
       if (sessionError) throw sessionError;
       if (!sessionData) throw new Error("Game session not found");
 
       setGameSession(sessionData);
-
       // If the game is completed, show the final results
       if (sessionData.status === "completed") {
         setGameEnded(true);
@@ -72,12 +70,29 @@ const PlayerGame = () => {
         sessionData.status === "active" &&
         sessionData.current_question_index !== null
       ) {
-        await fetchCurrentQuestion(
-          sessionData.quiz_id,
-          sessionData.current_question_index,
-        );
+        // *** MODIFICATION START ***
+        // If it's the very first question, show "Get Ready" for a moment
+        if (
+          sessionData.current_question_index === 0 &&
+          !sessionStorage.getItem("hasSeenGetReady")
+        ) {
+          setShowGetReady(true); // show loading screen
+          setTimeout(() => {
+            setShowGetReady(false);
+            fetchCurrentQuestion(
+              sessionData.quiz_id,
+              sessionData.current_question_index,
+            );
+            sessionStorage.setItem("hasSeenGetReady", "true");
+          }, 3000);
+        } else {
+          await fetchCurrentQuestion(
+            sessionData.quiz_id,
+            sessionData.current_question_index,
+          );
+        }
+        // *** MODIFICATION END ***
 
-        // Check if the player has already answered this question
         await checkIfAnswered(sessionData.current_question_index);
         setFinalAnswerSubmitted(false);
         setCanSubmit(false);
@@ -104,42 +119,27 @@ const PlayerGame = () => {
         .select("*")
         .eq("quiz_id", quizId)
         .order("id", { ascending: true });
-
       if (questionsError) throw questionsError;
       if (!questionsData || questionIndex >= questionsData.length) return;
 
       const question = questionsData[questionIndex];
-
-      // Get options for this question (without revealing which is correct)
+      // Get options for this question
       const { data: optionsData, error: optionsError } = await supabase
         .from("options")
         .select("id, text")
         .eq("question_id", question.id);
-
       if (optionsError) throw optionsError;
 
+      // *** CHANGE START ***
+      // REMOVED: setShowGetReady(true) and the entire setTimeout block.
+      // Set the question data directly.
       setCurrentQuestion({
         ...question,
         options: optionsData || [],
       });
-
       setTimeLeft(question.time_limit);
       setWaitingForNextQuestion(false);
-
-      // Start a timer to count down
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            // Timer ended - if no answer was submitted, that's fine
-            // The answer should have been auto-submitted when selected
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
+      // *** CHANGE END ***
     } catch (error: any) {
       toast({
         title: "Error loading question",
@@ -220,32 +220,32 @@ const PlayerGame = () => {
           const updatedSession = payload.new;
           setGameSession(updatedSession);
 
-          // If the game has ended
           if (updatedSession.status === "completed") {
             setGameEnded(true);
             fetchFinalResults();
             return;
           }
 
-          // If the question has changed
-          if (
-            updatedSession.current_question_index !== null &&
-            (!gameSession ||
-              updatedSession.current_question_index !==
-                gameSession.current_question_index)
-          ) {
-            fetchCurrentQuestion(
-              updatedSession.quiz_id,
-              updatedSession.current_question_index,
-            );
-            checkIfAnswered(updatedSession.current_question_index);
+          const newIndex = updatedSession.current_question_index;
+
+          // *** CHANGE START ***
+          // Explicitly check for the "Get Ready!" signal from the host
+          if (newIndex === -2) {
+            setShowGetReady(true);
+            setCurrentQuestion(null);
+          }
+          // Check if a new, valid question is being sent
+          else if (newIndex !== null && newIndex >= 0) {
+            setShowGetReady(false); // Hide the "Get Ready!" screen
+            fetchCurrentQuestion(updatedSession.quiz_id, newIndex);
+            checkIfAnswered(newIndex);
             setFinalAnswerSubmitted(false);
             setCanSubmit(false);
           }
+          // *** CHANGE END ***
         },
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(subscription);
     };
@@ -347,6 +347,29 @@ const PlayerGame = () => {
       setFinalAnswerSubmitted(false);
     }
   };
+
+  if (showGetReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#46178F] to-[#7B2CBF] text-white flex items-center justify-center p-4">
+        <div className="fixed top-4 right-4 z-50">
+          <UserMenu />
+        </div>
+        <Card className="max-w-md w-full bg-white/10 backdrop-blur-md border-white/20 shadow-xl p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <Logo className="bg-white/20 backdrop-blur-md p-1 rounded" />
+          </div>
+          <h1 className="text-3xl font-bold mb-4">Get Ready!</h1>
+          <p className="text-xl mb-8">The next question is coming up...</p>
+          <div className="relative">
+            <div className="h-16 w-16 rounded-full border-4 border-white/30 border-t-white animate-spin mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-6 w-6 rounded-full bg-white/20 animate-pulse" />
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

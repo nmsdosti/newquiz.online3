@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,11 +32,18 @@ const PollGamePlay = () => {
   const [totalAnswers, setTotalAnswers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [pollEnded, setPollEnded] = useState(false);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     if (sessionId) {
-      fetchPollData();
+      initializePoll();
     }
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -46,9 +53,10 @@ const PollGamePlay = () => {
     }
   }, [sessionId, currentQuestionIndex]);
 
-  const fetchPollData = async () => {
+  const initializePoll = async () => {
     try {
       setLoading(true);
+      console.log("[HOST] Initializing poll for session:", sessionId);
 
       // Get the poll session
       const { data: sessionData, error: sessionError } = await supabase
@@ -72,6 +80,7 @@ const PollGamePlay = () => {
       }
 
       setPollSession(sessionData);
+      console.log("[HOST] Poll session loaded:", sessionData);
 
       // Get the quiz details
       const { data: quizData, error: quizError } = await supabase
@@ -110,6 +119,7 @@ const PollGamePlay = () => {
       );
 
       setQuestions(questionsWithOptions);
+      console.log("[HOST] Questions loaded:", questionsWithOptions.length);
 
       // Get the players who have joined
       const { data: playersData, error: playersError } = await supabase
@@ -119,13 +129,18 @@ const PollGamePlay = () => {
 
       if (playersError) throw playersError;
       setPlayers(playersData || []);
+      console.log("[HOST] Players loaded:", playersData?.length || 0);
 
       // If the poll is already in progress, get the current question index
       if (sessionData.current_question_index !== null) {
         setCurrentQuestionIndex(sessionData.current_question_index);
         await refreshAnswerStats(sessionData.current_question_index);
       }
+
+      // Set up broadcast channel
+      setupBroadcastChannel();
     } catch (error: any) {
+      console.error("[HOST] Error initializing poll:", error);
       toast({
         title: "Error loading poll",
         description: error.message || "Something went wrong",
@@ -135,6 +150,17 @@ const PollGamePlay = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const setupBroadcastChannel = () => {
+    const channelName = `poll_${sessionId}_sync`;
+    console.log("[HOST] Setting up broadcast channel:", channelName);
+
+    channelRef.current = supabase.channel(channelName);
+
+    channelRef.current.subscribe((status: string) => {
+      console.log("[HOST] Channel status:", status);
+    });
   };
 
   const subscribeToAnswers = () => {
@@ -162,15 +188,26 @@ const PollGamePlay = () => {
     };
   };
 
-  const refreshAnswerStats = async (questionIndex: number) => {
+  const refreshAnswerStats = async (
+    questionIndex: number = currentQuestionIndex,
+  ) => {
     try {
+      console.log(`[HOST] Refreshing stats for question ${questionIndex + 1}`);
+
       const { data: answers, error } = await supabase
         .from("poll_answers")
         .select("option_id")
         .eq("session_id", sessionId)
         .eq("question_index", questionIndex);
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[HOST] Database error:`, error);
+        throw error;
+      }
+
+      console.log(
+        `[HOST] Found ${answers?.length || 0} answers for question ${questionIndex + 1}`,
+      );
 
       const stats: { [key: string]: number } = {};
       if (questions[questionIndex]) {
@@ -185,10 +222,12 @@ const PollGamePlay = () => {
         }
       });
 
-      setAnswerStats(stats);
+      console.log(`[HOST] Updated stats:`, stats);
+
+      setAnswerStats({ ...stats });
       setTotalAnswers(answers?.length || 0);
     } catch (error: any) {
-      console.error("Error fetching answer stats:", error);
+      console.error(`[HOST] Error fetching answer stats:`, error);
     }
   };
 
@@ -212,7 +251,10 @@ const PollGamePlay = () => {
     }
 
     try {
-      const { error } = await supabase
+      console.log("[HOST] Starting poll with", questions.length, "questions");
+
+      // First, update the database
+      const { error: dbError } = await supabase
         .from("poll_sessions")
         .update({
           status: "active",
@@ -221,11 +263,52 @@ const PollGamePlay = () => {
         })
         .eq("id", sessionId);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
+      console.log("[HOST] Database updated to active status");
 
+      // Update local state
       setCurrentQuestionIndex(0);
-      await refreshAnswerStats(0);
+      setPollSession((prev) => ({
+        ...prev,
+        status: "active",
+        current_question_index: 0,
+      }));
+
+      // Prepare question data
+      const questionData = {
+        id: questions[0].id,
+        text: questions[0].text,
+        options: questions[0].options || [],
+      };
+
+      console.log("[HOST] Broadcasting first question:", questionData);
+
+      // Broadcast the first question
+      if (channelRef.current) {
+        const result = await channelRef.current.send({
+          type: "broadcast",
+          event: "question_started",
+          payload: {
+            question_index: 0,
+            question: questionData,
+            session_status: "active",
+            timestamp: Date.now(),
+          },
+        });
+        console.log("[HOST] Broadcast result:", result);
+      }
+
+      // Initialize answer stats
+      const initialStats: { [key: string]: number } = {};
+      questions[0].options.forEach((option) => {
+        initialStats[option.id] = 0;
+      });
+      setAnswerStats(initialStats);
+      setTotalAnswers(0);
+
+      console.log("[HOST] Poll started successfully");
     } catch (error: any) {
+      console.error("[HOST] Error starting poll:", error);
       toast({
         title: "Error starting poll",
         description: error.message || "Something went wrong",
@@ -238,31 +321,15 @@ const PollGamePlay = () => {
     const nextIndex = currentQuestionIndex + 1;
 
     if (nextIndex >= questions.length) {
-      try {
-        const { error } = await supabase
-          .from("poll_sessions")
-          .update({
-            status: "completed",
-            current_question_index: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", sessionId);
-
-        if (error) throw error;
-
-        setPollEnded(true);
-      } catch (error: any) {
-        toast({
-          title: "Error ending poll",
-          description: error.message || "Something went wrong",
-          variant: "destructive",
-        });
-      }
+      await endPoll();
       return;
     }
 
     try {
-      const { error } = await supabase
+      console.log(`[HOST] Moving to question ${nextIndex + 1}`);
+
+      // Update database
+      const { error: dbError } = await supabase
         .from("poll_sessions")
         .update({
           current_question_index: nextIndex,
@@ -270,16 +337,90 @@ const PollGamePlay = () => {
         })
         .eq("id", sessionId);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
+      console.log("[HOST] Database updated with next question index");
 
+      // Update local state
       setCurrentQuestionIndex(nextIndex);
-      // Reset answer stats for new question
-      setAnswerStats({});
+
+      // Prepare question data
+      const questionData = {
+        id: questions[nextIndex].id,
+        text: questions[nextIndex].text,
+        options: questions[nextIndex].options || [],
+      };
+
+      console.log("[HOST] Broadcasting next question:", questionData);
+
+      // Broadcast the next question
+      if (channelRef.current) {
+        const result = await channelRef.current.send({
+          type: "broadcast",
+          event: "question_started",
+          payload: {
+            question_index: nextIndex,
+            question: questionData,
+            session_status: "active",
+            timestamp: Date.now(),
+          },
+        });
+        console.log("[HOST] Broadcast result:", result);
+      }
+
+      // Initialize fresh answer stats for the new question
+      const freshStats: { [key: string]: number } = {};
+      questions[nextIndex].options.forEach((option) => {
+        freshStats[option.id] = 0;
+      });
+      setAnswerStats(freshStats);
       setTotalAnswers(0);
-      await refreshAnswerStats(nextIndex);
+
+      console.log(`[HOST] Successfully moved to question ${nextIndex + 1}`);
     } catch (error: any) {
+      console.error(`[HOST] Error moving to next question:`, error);
       toast({
         title: "Error loading next question",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const endPoll = async () => {
+    try {
+      console.log("[HOST] Ending poll");
+
+      // Update database
+      const { error } = await supabase
+        .from("poll_sessions")
+        .update({
+          status: "completed",
+          current_question_index: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId);
+
+      if (error) throw error;
+      console.log("[HOST] Database updated to completed status");
+
+      // Broadcast poll end to all participants
+      if (channelRef.current) {
+        const result = await channelRef.current.send({
+          type: "broadcast",
+          event: "poll_ended",
+          payload: {
+            timestamp: Date.now(),
+          },
+        });
+        console.log("[HOST] Poll end broadcast result:", result);
+      }
+
+      setPollEnded(true);
+      console.log("[HOST] Poll ended successfully");
+    } catch (error: any) {
+      console.error("[HOST] Error ending poll:", error);
+      toast({
+        title: "Error ending poll",
         description: error.message || "Something went wrong",
         variant: "destructive",
       });
@@ -321,7 +462,7 @@ const PollGamePlay = () => {
               </p>
               <Button
                 onClick={() => navigate("/host")}
-                className="bg-navy hover:bg-navy/90 gap-2 text-lg px-8 py-6 h-auto"
+                className="bg-navy hover:bg-navy/90 text-lg px-8 py-6 h-auto"
               >
                 Back to Host Dashboard
               </Button>
@@ -332,7 +473,7 @@ const PollGamePlay = () => {
     );
   }
 
-  if (currentQuestionIndex === -1) {
+  if (currentQuestionIndex === -1 && pollSession?.status !== "active") {
     return (
       <div className="min-h-screen bg-[#f5f5f7] pt-16 pb-12">
         <div className="w-full bg-white flex justify-between items-center px-6 py-4 shadow-md fixed top-0 left-0 right-0 z-50">
@@ -387,9 +528,15 @@ const PollGamePlay = () => {
               Poll Question {questionNumber} of {totalQuestions}
             </h2>
           </div>
-          <div className="text-white">
-            <Users className="inline h-5 w-5 mr-2" />
-            {totalAnswers} responses
+          <div className="flex items-center gap-4 text-white">
+            <div className="flex items-center">
+              <Users className="inline h-5 w-5 mr-2" />
+              {players.length} players joined
+            </div>
+            <div className="flex items-center">
+              <BarChart3 className="inline h-5 w-5 mr-2" />
+              {totalAnswers} responses
+            </div>
           </div>
         </div>
 
@@ -449,28 +596,7 @@ const PollGamePlay = () => {
 
           <div className="flex justify-center gap-4">
             <Button
-              onClick={async () => {
-                try {
-                  const { error } = await supabase
-                    .from("poll_sessions")
-                    .update({
-                      status: "completed",
-                      current_question_index: null,
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", sessionId);
-
-                  if (error) throw error;
-
-                  setPollEnded(true);
-                } catch (error: any) {
-                  toast({
-                    title: "Error ending poll",
-                    description: error.message || "Something went wrong",
-                    variant: "destructive",
-                  });
-                }
-              }}
+              onClick={endPoll}
               variant="outline"
               className="bg-red-500 hover:bg-red-600 text-white border-red-500 gap-2 text-lg px-8 py-6 h-auto"
             >

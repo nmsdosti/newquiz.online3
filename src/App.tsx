@@ -1,6 +1,5 @@
 import { Suspense, useEffect } from "react";
-import { Navigate, Route, Routes, useRoutes } from "react-router-dom";
-import routes from "tempo-routes";
+import { Navigate, Route, Routes } from "react-router-dom";
 import LoginForm from "./components/auth/LoginForm";
 import SignUpForm from "./components/auth/SignUpForm";
 import ForgotPassword from "./components/auth/ForgotPassword";
@@ -82,13 +81,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  // For the tempo routes
-  const tempoRoutes =
-    import.meta.env.VITE_TEMPO === "true" ? useRoutes(routes) : null;
-
   return (
     <>
-      {tempoRoutes}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<ContactUs />} />
@@ -220,9 +214,6 @@ function AppRoutes() {
             </AdminRoute>
           }
         />
-
-        {/* Add this before the catchall route for tempo */}
-        {import.meta.env.VITE_TEMPO === "true" && <Route path="/tempobook/*" />}
       </Routes>
     </>
   );

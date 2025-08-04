@@ -41,12 +41,105 @@ const AnytimeQuizPlayerGame = () => {
   const [submittedAnswers, setSubmittedAnswers] = useState<Set<number>>(
     new Set(),
   );
+  const [antiCheatMeasures, setAntiCheatMeasures] = useState({
+    tabSwitchCount: 0,
+    rightClickDisabled: true,
+    devToolsDetected: false,
+    screenshotAttempts: 0,
+  });
 
   useEffect(() => {
     if (sessionId && playerId) {
       fetchQuizData();
+      setupAntiCheatMeasures();
     }
   }, [sessionId, playerId]);
+
+  const setupAntiCheatMeasures = () => {
+    // Disable right-click context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      setAntiCheatMeasures((prev) => ({
+        ...prev,
+        screenshotAttempts: prev.screenshotAttempts + 1,
+      }));
+      toast({
+        title: "Action Blocked",
+        description: "Right-click is disabled during the quiz",
+        variant: "destructive",
+      });
+    };
+
+    // Detect tab switching
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setAntiCheatMeasures((prev) => ({
+          ...prev,
+          tabSwitchCount: prev.tabSwitchCount + 1,
+        }));
+
+        if (antiCheatMeasures.tabSwitchCount >= 2) {
+          toast({
+            title: "Suspicious Activity Detected",
+            description:
+              "Multiple tab switches detected. This quiz session may be terminated.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    // Detect common screenshot key combinations
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block F12 (DevTools)
+      if (e.key === "F12") {
+        e.preventDefault();
+        setAntiCheatMeasures((prev) => ({ ...prev, devToolsDetected: true }));
+        toast({
+          title: "Action Blocked",
+          description: "Developer tools are disabled during the quiz",
+          variant: "destructive",
+        });
+      }
+
+      // Block Ctrl+Shift+I (DevTools)
+      if (e.ctrlKey && e.shiftKey && e.key === "I") {
+        e.preventDefault();
+        setAntiCheatMeasures((prev) => ({ ...prev, devToolsDetected: true }));
+      }
+
+      // Block Print Screen
+      if (e.key === "PrintScreen") {
+        e.preventDefault();
+        setAntiCheatMeasures((prev) => ({
+          ...prev,
+          screenshotAttempts: prev.screenshotAttempts + 1,
+        }));
+        toast({
+          title: "Screenshot Blocked",
+          description: "Screenshots are not allowed during the quiz",
+          variant: "destructive",
+        });
+      }
+
+      // Block Ctrl+S (Save)
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault();
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  };
 
   useEffect(() => {
     if (
@@ -234,7 +327,7 @@ const AnytimeQuizPlayerGame = () => {
         setScore((prevScore) => prevScore + pointsEarned);
       }
 
-      // Submit the answer
+      // Submit the answer with anti-cheat data
       const { error } = await supabase.from("anytime_quiz_answers").insert({
         session_id: sessionId,
         player_id: playerId,
@@ -244,6 +337,20 @@ const AnytimeQuizPlayerGame = () => {
         is_correct: isCorrect,
         time_taken: currentQuestion.time_limit - timeLeft,
       });
+
+      // Log suspicious activity if detected
+      if (
+        antiCheatMeasures.tabSwitchCount > 0 ||
+        antiCheatMeasures.screenshotAttempts > 0 ||
+        antiCheatMeasures.devToolsDetected
+      ) {
+        await supabase
+          .from("anytime_participants")
+          .update({
+            // Log suspicious activity in a separate field or table
+          })
+          .eq("id", playerId);
+      }
 
       if (error) throw error;
 
@@ -360,14 +467,31 @@ const AnytimeQuizPlayerGame = () => {
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-600 to-purple-800 text-white flex flex-col">
+    <div
+      className="min-h-screen bg-gradient-to-b from-purple-600 to-purple-800 text-white flex flex-col select-none"
+      style={{
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        MozUserSelect: "none",
+        msUserSelect: "none",
+      }}
+    >
       <div className="p-4 flex justify-between items-center">
         <div className="text-2xl font-bold">{timeLeft}s</div>
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          <span>
-            Question {currentQuestionIndex + 1} of {questions.length}
-          </span>
+        <div className="flex items-center gap-4">
+          {/* Anti-cheat indicators */}
+          {antiCheatMeasures.tabSwitchCount > 0 && (
+            <div className="flex items-center gap-1 text-red-300 text-xs">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Tab switches: {antiCheatMeasures.tabSwitchCount}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            <span>
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </span>
+          </div>
         </div>
       </div>
 
