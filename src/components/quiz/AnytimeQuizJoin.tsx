@@ -182,7 +182,7 @@ const AnytimeQuizJoin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!playerName.trim() || !email.trim()) {
+    if (!playerName.trim() || !email.trim() || !phone.trim()) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields",
@@ -279,7 +279,7 @@ const AnytimeQuizJoin = () => {
           session_id: sessionId,
           player_name: `${playerName}_${deviceFingerprint}`, // Include device fingerprint
           email: email,
-          phone: phone || null,
+          phone: phone,
           ip_address: ipAddress,
         })
         .select();
@@ -368,7 +368,7 @@ const AnytimeQuizJoin = () => {
                 htmlFor="phone"
                 className="block text-sm text-white font-medium"
               >
-                Phone Number (Optional)
+                Phone Number *
               </label>
               <Input
                 id="phone"
@@ -377,6 +377,7 @@ const AnytimeQuizJoin = () => {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter your phone number"
                 className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:ring-purple-500 focus:border-purple-500 text-lg h-14"
+                required
               />
             </div>
 
